@@ -30,6 +30,10 @@ def graphic():
 def control():
     return redirect(url_for("static", filename="control.html"))
 
+@app.route("/hashtag")
+def hashtag():
+    return config.HASHTAG
+
 def http_server() -> None:
     print("Starting HTTP Server")
     app.run(host=config.HOST, port=config.PORT, debug=True)
