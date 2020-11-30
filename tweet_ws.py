@@ -12,10 +12,13 @@
 import config
 import asyncio
 import websockets
+import json
 
 async def ws_tweets(websocket, path):
     print("Websocket Connected")
     try:
+        for _ in range(5):
+            await websocket.send(json.dumps({"title": "Tweet Title - @tweet", "body": "Hello, this is a tweet, #CIN21"}))
         async for message in websocket:
             await websocket.send("Hello There")
     except websocket.WebSocketException.ClosedConnection:
