@@ -13,15 +13,39 @@ import config
 import asyncio
 import websockets
 import json
+from twitter import Api
+
+async def recv_tweets(websocket):
+    api = Api(
+    config.TWITTER_API_KEY,
+    config.TWITTER_API_SECRET_KEY,
+    config.TWITTER_ACCESS_TOKEN,
+    config.TWITTER_ACCESS_TOKEN_SECRET,
+    tweet_mode="extended"
+    )
+    for tweet in api.GetStreamFilter(track=[config.HASHTAG], languages=["en"]):
+        if tweet["text"][:2] == "RT":
+            if "extended_tweet" in tweet["retweeted_status"].keys():
+                body = "{0}: {1}".format(tweet["text"].split(":")[0], tweet["retweeted_status"]["extended_tweet"]["full_text"])
+            else:
+                body = tweet["text"]
+        else:
+            if "extended_tweet" in tweet.keys():
+                body = tweet["extended_tweet"]["full_text"]
+            else:
+                body = tweet["text"]
+        await websocket.send(json.dumps({
+            "title": "{0} - @{1}".format(tweet["user"]["name"], tweet["user"]["screen_name"]),
+            "body": body
+        }))
+
 
 async def ws_tweets(websocket, path):
     print("Websocket Connected")
     try:
-        for _ in range(5):
-            await websocket.send(json.dumps({"title": "Tweet Title - @tweet", "body": "Hello, this is a tweet, #CIN21"}))
-        async for message in websocket:
-            await websocket.send("Hello There")
-    except websocket.WebSocketException.ClosedConnection:
+        await websocket.send("Hello There")
+        await asyncio.gather(recv_tweets(websocket))
+    except websockets.exceptions.ConnectionClosedError:
         print("RIP Connection")
 
 def ws_server() -> None:

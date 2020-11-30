@@ -1,2 +1,5 @@
 __pycache__
 venv
+twitter_details
+config.py
+test.py
