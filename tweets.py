@@ -16,9 +16,10 @@ from tweet_ws import ws_server
 # HTTP Server
 http_server: Process = Process(target=http_server)
 http_server.start()
-http_server.join()
 
 # WebSocket Server
 ws_server: Process = Process(target=ws_server)
 ws_server.start()
+
+http_server.join()
 ws_server.join()
