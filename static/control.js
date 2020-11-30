@@ -36,6 +36,7 @@ xhttp.onreadystatechange = function() {
             // Now lets put the tweet on the control screen
             var tweet = document.createElement("DIV");
             tweet.classList.add("card");
+            tweet.id = message.id.toString()
 
             var tweetCardBody = document.createElement("DIV");
             tweetCardBody.classList.add("card-body");
@@ -53,11 +54,25 @@ xhttp.onreadystatechange = function() {
             var acceptButton = document.createElement("BUTTON");
             acceptButton.classList.add("btn", "btn-primary", "btn-sm");
             acceptButton.innerText = "Accept Tweet";
+            acceptButton.onclick = function() {
+                ws.send(JSON.stringify({
+                    "id": message.id,
+                    "decision": "ACCEPT"
+                }));
+                document.getElementById(message.id.toString()).remove();
+            }
             tweetCardBody.appendChild(acceptButton);
 
             var rejectButton = document.createElement("BUTTON");
             rejectButton.classList.add("btn", "btn-danger", "btn-sm");
             rejectButton.innerText = "Reject Tweet";
+            rejectButton.onclick = function() {
+                ws.send(JSON.stringify({
+                    "id": message.id,
+                    "decision": "REJECT"
+                }));
+                document.getElementById(message.id.toString()).remove();
+            }
             tweetCardBody.appendChild(rejectButton);
 
             tweet.appendChild(tweetCardBody);

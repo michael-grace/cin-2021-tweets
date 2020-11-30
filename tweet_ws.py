@@ -14,6 +14,9 @@ import asyncio
 import websockets
 import json
 from twitter import Api
+from typing import Dict
+
+pending_tweets: Dict[int, Dict[str, any]] = {}
 
 async def recv_tweets(websocket):
     api = Api(
@@ -34,17 +37,31 @@ async def recv_tweets(websocket):
                 body = tweet["extended_tweet"]["full_text"]
             else:
                 body = tweet["text"]
-        await websocket.send(json.dumps({
+        tweet_info = {
+            "id": tweet["id"],
             "title": "{0} - @{1}".format(tweet["user"]["name"], tweet["user"]["screen_name"]),
             "body": body
-        }))
+        }
+        pending_tweets[tweet["id"]] = tweet_info
+        await websocket.send(json.dumps(tweet_info))
 
+async def recv_decisions(websocket):
+    async for message in websocket:
+        data = json.loads(message)
+        if data["decision"] == "ACCEPT":
+            # TODO Send the tweet to clients
+            del pending_tweets[message["id"]]
+        elif data["decision"] == "REJECT":
+            del pending_tweets[message["id"]]
 
 async def ws_tweets(websocket, path):
     print("Websocket Connected")
     try:
         await websocket.send("Hello There")
-        await asyncio.gather(recv_tweets(websocket))
+        await asyncio.gather(
+            recv_tweets(websocket),
+            recv_decisions(websocket)
+            )
     except websockets.exceptions.ConnectionClosedError:
         print("RIP Connection")
 
