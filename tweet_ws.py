@@ -20,6 +20,7 @@ import config
 controller_connection: Optional[websockets.server.WebSocketServerProtocol] = None
 
 pending_tweets: Dict[int, Dict[str, Any]] = {}
+blocked_users: Set[str] = set()
 client_connections: Set[websockets.server.WebSocketServerProtocol] = set()
 
 
@@ -34,9 +35,10 @@ async def send_to_client(tweet: Dict[str, Any]) -> None:
 async def recv_tweets(websocket: websockets.server.WebSocketServerProtocol) -> None:
     async for message in websocket:
         data = json.loads(message)
-        pending_tweets[data["id"]] = data
-        if controller_connection:
-            await controller_connection.send(message)
+        if data["title"].split("@")[1] not in blocked_users:
+            pending_tweets[data["id"]] = data
+            if controller_connection:
+                await controller_connection.send(message)
 
 
 async def recv_decisions(websocket: websockets.server.WebSocketServerProtocol) -> None:
@@ -44,6 +46,8 @@ async def recv_decisions(websocket: websockets.server.WebSocketServerProtocol) -
         data = json.loads(message)
         if data["decision"] == "ACCEPT":
             await send_to_client(pending_tweets[data["id"]])
+        elif data["decision"] == "BLOCK":
+            blocked_users.add(str(pending_tweets[data["id"]]["title"].split("@")[1]))
         try:
             del pending_tweets[data["id"]]
         except KeyError:
