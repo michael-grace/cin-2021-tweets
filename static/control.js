@@ -75,6 +75,20 @@ xhttp.onreadystatechange = function() {
             }
             tweetCardBody.appendChild(rejectButton);
 
+            var blockButton = document.createElement("BUTTON");
+            blockButton.classList.add("btn", "btn-warning", "btn-sm");
+            blockButton.innerText = "Block User";
+            blockButton.onclick = function() {
+                if (confirm("Are you sure you want to block @" + message.title.split("@")[1] + "?")) {
+                    ws.send(JSON.stringify({
+                        "id": message.id,
+                        "decision": "BLOCK"
+                    }));
+                }
+                document.getElementById(message.id.toString()).remove();
+            }
+            tweetCardBody.appendChild(blockButton);
+
             tweet.appendChild(tweetCardBody);
             document.getElementById("tweets").appendChild(tweet)
         }

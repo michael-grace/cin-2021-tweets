@@ -29,8 +29,13 @@ async def recv_tweets():
         config.TWITTER_ACCESS_TOKEN_SECRET,
         tweet_mode="extended"
     )
-    while True:
+
+    connected: bool = False
+
+    while not connected:
         async with websockets.connect(f"ws://{config.HOST}:{config.WS_PORT}/internal") as websocket:
+            print("Internal Link Connected")
+            connected = True
             try:
                 stream: Any[Dict[str, Any]] = api.GetStreamFilter(
                     track=[config.HASHTAG], languages=["en"])
@@ -61,6 +66,10 @@ async def recv_tweets():
 
             except error.TwitterError as e:
                 print(f"Twitter Error: Probably Rate Limiting: {e}")
+            
+            except websockets.exceptions.ConnectionClosedError:
+                print("Internal Link Disconnected. Reconnecting...")
+                connected = False
 
 
 def start_recv_tweets():

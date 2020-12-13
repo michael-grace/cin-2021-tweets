@@ -80,7 +80,7 @@ async def ws_tweets(websocket: websockets.server.WebSocketServerProtocol, path: 
             await recv_tweets(websocket)
 
     except websockets.exceptions.ConnectionClosedError:
-        print("RIP Connection")
+        print(f"RIP Connection {path}")
     finally:
         if websocket in client_connections:
             client_connections.remove(websocket)
