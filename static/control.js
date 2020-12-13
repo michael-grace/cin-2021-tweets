@@ -19,7 +19,7 @@ xhttp.onreadystatechange = function() {
         document.getElementById("hashtag").innerHTML = server_data.hashtag;
 
         // WebSocket Connection
-        var ws = new WebSocket(server_data.ws_conn);
+        var ws = new WebSocket(server_data.ws_conn + "/control");
         var alert = document.getElementById("server");
         ws.onopen = function() {
             alert.innerText = "Connected to Server";

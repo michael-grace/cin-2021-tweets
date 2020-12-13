@@ -3,7 +3,7 @@
     Candidate Interview Night 2021
 
     Author: Michael Grace
-    Date: November 2020
+    Date: November, December 2020
 
     github.com/UniversityRadioYork
 
@@ -13,68 +13,77 @@ import config
 import asyncio
 import websockets
 import json
-from twitter import Api
-from typing import Dict
+from typing import Dict, Any
 
-pending_tweets: Dict[int, Dict[str, any]] = {}
+controller_connection: websockets.server.WebSocketServerProtocol = None
 
-
-async def recv_tweets(websocket):
-    api = Api(
-        config.TWITTER_API_KEY,
-        config.TWITTER_API_SECRET_KEY,
-        config.TWITTER_ACCESS_TOKEN,
-        config.TWITTER_ACCESS_TOKEN_SECRET,
-        tweet_mode="extended"
-    )
-    for tweet in api.GetStreamFilter(track=[config.HASHTAG], languages=["en"]):
-        if tweet["text"][:2] == "RT":
-            if "extended_tweet" in tweet["retweeted_status"].keys():
-                body = "{0}: {1}".format(
-                    tweet["text"].split(":")[0],
-                    tweet["retweeted_status"]["extended_tweet"]["full_text"]
-                )
-            else:
-                body = tweet["text"]
-        else:
-            if "extended_tweet" in tweet.keys():
-                body = tweet["extended_tweet"]["full_text"]
-            else:
-                body = tweet["text"]
-        tweet_info = {
-            "id": tweet["id"],
-            "title": "{0} - @{1}".format(tweet["user"]["name"], tweet["user"]["screen_name"]),
-            "body": body
-        }
-        pending_tweets[tweet["id"]] = tweet_info
-        await websocket.send(json.dumps(tweet_info))
+pending_tweets: Dict[int, Dict[str, Any]] = {}
+client_connections = set()
 
 
-async def recv_decisions(websocket):
+async def send_to_client(tweet: Dict[str, Any]):
+    try:
+        await asyncio.wait([conn.send(json.dumps(tweet)) for conn in client_connections])
+    except ValueError:
+        # No clients connected - Not a problem
+        pass
+
+
+async def recv_tweets(websocket: websockets.server.WebSocketServerProtocol):
+    async for message in websocket:
+        data = json.loads(message)
+        pending_tweets[data["id"]] = data
+        if controller_connection:
+            await controller_connection.send(message)
+
+
+async def recv_decisions(websocket: websockets.server.WebSocketServerProtocol):
     async for message in websocket:
         data = json.loads(message)
         if data["decision"] == "ACCEPT":
-            # TODO Send the tweet to clients
-            del pending_tweets[message["id"]]
-        elif data["decision"] == "REJECT":
-            del pending_tweets[message["id"]]
+            await send_to_client(pending_tweets[data["id"]])
+        try:
+            del pending_tweets[data["id"]]
+        except KeyError:
+            pass
 
+async def keep_client_alive(websocket):
+    # Keep Connection Alive
+    async for _ in websocket:
+        pass
 
 async def ws_tweets(websocket, path):
+    global controller_connection
     print("Websocket Connected")
+
     try:
         await websocket.send("Hello There")
-        await asyncio.gather(
-            recv_tweets(websocket),
-            recv_decisions(websocket)
-        )
+    
+        if path == "/control":
+            print("Controller Connection")
+            controller_connection = websocket
+            await recv_decisions(websocket)
+    
+        elif path == "/client":
+            print("Client Connection")
+            client_connections.add(websocket)
+            await keep_client_alive(websocket)
+    
+        elif path == "/internal":
+            print("Internal Connection")
+            await recv_tweets(websocket)
+    
     except websockets.exceptions.ConnectionClosedError:
         print("RIP Connection")
+    finally:
+        if websocket in client_connections:
+            client_connections.remove(websocket)
 
 
 def ws_server() -> None:
     print("Starting WebSocket Server")
-    ws = websockets.serve(ws_tweets, config.HOST, config.WS_PORT)
+
+    ws = websockets.serve(ws_tweets, config.HOST, config.WS_PORT, )
     asyncio.get_event_loop().run_until_complete(ws)
     asyncio.get_event_loop().run_forever()
 
