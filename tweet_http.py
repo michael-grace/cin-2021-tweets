@@ -9,7 +9,8 @@
 
 """
 
-from flask import Flask, url_for, redirect
+from flask import Flask, redirect, url_for
+
 import config
 
 app = Flask(__name__)

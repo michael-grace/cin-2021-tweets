@@ -1,5 +1,6 @@
 __pycache__
 venv
+.vscode
 twitter_details
 config.py
 test.py

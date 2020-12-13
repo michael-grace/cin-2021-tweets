@@ -9,19 +9,21 @@
 
 """
 
-import config
 import asyncio
-import websockets
 import json
-from typing import Dict, Any
+from typing import Any, Dict, Optional, Set
 
-controller_connection: websockets.server.WebSocketServerProtocol = None
+import websockets
+
+import config
+
+controller_connection: Optional[websockets.server.WebSocketServerProtocol] = None
 
 pending_tweets: Dict[int, Dict[str, Any]] = {}
-client_connections = set()
+client_connections: Set[websockets.server.WebSocketServerProtocol] = set()
 
 
-async def send_to_client(tweet: Dict[str, Any]):
+async def send_to_client(tweet: Dict[str, Any]) -> None:
     try:
         await asyncio.wait([conn.send(json.dumps(tweet)) for conn in client_connections])
     except ValueError:
@@ -29,7 +31,7 @@ async def send_to_client(tweet: Dict[str, Any]):
         pass
 
 
-async def recv_tweets(websocket: websockets.server.WebSocketServerProtocol):
+async def recv_tweets(websocket: websockets.server.WebSocketServerProtocol) -> None:
     async for message in websocket:
         data = json.loads(message)
         pending_tweets[data["id"]] = data
@@ -37,7 +39,7 @@ async def recv_tweets(websocket: websockets.server.WebSocketServerProtocol):
             await controller_connection.send(message)
 
 
-async def recv_decisions(websocket: websockets.server.WebSocketServerProtocol):
+async def recv_decisions(websocket: websockets.server.WebSocketServerProtocol) -> None:
     async for message in websocket:
         data = json.loads(message)
         if data["decision"] == "ACCEPT":
@@ -47,32 +49,34 @@ async def recv_decisions(websocket: websockets.server.WebSocketServerProtocol):
         except KeyError:
             pass
 
-async def keep_client_alive(websocket):
+
+async def keep_client_alive(websocket: websockets.server.WebSocketServerProtocol) -> None:
     # Keep Connection Alive
     async for _ in websocket:
         pass
 
-async def ws_tweets(websocket, path):
+
+async def ws_tweets(websocket: websockets.server.WebSocketServerProtocol, path: str) -> None:
     global controller_connection
     print("Websocket Connected")
 
     try:
         await websocket.send("Hello There")
-    
+
         if path == "/control":
             print("Controller Connection")
             controller_connection = websocket
             await recv_decisions(websocket)
-    
+
         elif path == "/client":
             print("Client Connection")
             client_connections.add(websocket)
             await keep_client_alive(websocket)
-    
+
         elif path == "/internal":
             print("Internal Connection")
             await recv_tweets(websocket)
-    
+
     except websockets.exceptions.ConnectionClosedError:
         print("RIP Connection")
     finally:
@@ -83,7 +87,8 @@ async def ws_tweets(websocket, path):
 def ws_server() -> None:
     print("Starting WebSocket Server")
 
-    ws = websockets.serve(ws_tweets, config.HOST, config.WS_PORT, )
+    ws: websockets.server.Serve = websockets.serve(
+        ws_tweets, config.HOST, config.WS_PORT)
     asyncio.get_event_loop().run_until_complete(ws)
     asyncio.get_event_loop().run_forever()
 
