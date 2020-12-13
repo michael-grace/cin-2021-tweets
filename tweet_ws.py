@@ -65,6 +65,8 @@ async def ws_tweets(websocket: websockets.server.WebSocketServerProtocol, path: 
 
         if path == "/control":
             print("Controller Connection")
+            if controller_connection:
+                await controller_connection.close()
             controller_connection = websocket
             await recv_decisions(websocket)
 
