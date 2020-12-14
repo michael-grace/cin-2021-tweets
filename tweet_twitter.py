@@ -14,6 +14,7 @@ import asyncio
 import json
 import random
 from typing import Any, Dict
+import urllib
 
 import websockets
 from twitter import Api, error
@@ -56,17 +57,23 @@ async def recv_tweets():
                         else:
                             body = tweet["text"]
 
+                    url = f"https://twitter.com/{tweet['user']['screen_name']}/status/{tweet['id']}"
+
+                    html = urllib.request.urlopen(
+                        f"https://publish.twitter.com/oembed?url={url}&hide_thread=true&theme=dark").read().decode("utf-8")
+
                     tweet_info = {
                         "id": random.randint(0, 10000000000),
                         "title": "{0} - @{1}".format(tweet["user"]["name"], tweet["user"]["screen_name"]),
-                        "body": body
+                        "body": body,
+                        "html": html
                     }
 
                     await websocket.send(json.dumps(tweet_info))
 
             except error.TwitterError as e:
                 print(f"Twitter Error: Probably Rate Limiting: {e}")
-            
+
             except websockets.exceptions.ConnectionClosedError:
                 print("Internal Link Disconnected. Reconnecting...")
                 connected = False
