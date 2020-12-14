@@ -46,7 +46,7 @@ def hashtag():
 
 def http_server() -> None:
     print("Starting HTTP Server")
-    app.run(host=config.HOST, port=config.PORT, debug=True)
+    app.run(host=config.HOST, port=config.PORT, debug=True, use_reloader = False)
 
 
 if __name__ == "__main__":
