@@ -60,7 +60,7 @@ async def recv_tweets():
                     url = f"https://twitter.com/{tweet['user']['screen_name']}/status/{tweet['id']}"
 
                     html = urllib.request.urlopen(
-                        f"https://publish.twitter.com/oembed?url={url}&hide_thread=true&theme=dark").read().decode("utf-8")
+                        f"https://publish.twitter.com/oembed?url={url}&hide_thread=true&theme=dark&hide_media=true").read().decode("utf-8")
 
                     tweet_info = {
                         "id": random.randint(0, 10000000000),
