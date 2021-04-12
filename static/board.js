@@ -19,7 +19,13 @@ xhttp.onreadystatechange = function() {
             console.log("Connected.");
         }
         ws.onmessage = function(event) {
-            console.log(event.data);
+            tweetJson = JSON.parse(event.data);
+            tweetHtml = JSON.parse(tweetJson.html);
+            let newTweet = document.createElement("div");
+            newTweet.innerHTML = tweetHtml.html;
+            newTweet.classList = "w-25 p-3";
+            document.querySelector("tweets").prepend(newTweet);
+            twttr.widgets.load(newTweet);
         };
         ws.onclose = function() {
             console.log("Random Screaming!")
