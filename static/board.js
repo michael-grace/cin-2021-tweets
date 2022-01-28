@@ -1,36 +1,35 @@
 /**
     URY Tweet Board
-    Candidate Interview Night 2021
+    Candidate Interview Night 2022
 
-    Author: Michael Grace
-    Date: November 2020
+    Author: Michael Grace, Colin Roitt
+    Date: November 2020, January 2022
 
     github.com/UniversityRadioYork
  */
 
-var xhttp = new XMLHttpRequest();
-xhttp.onreadystatechange = function() {
-    if (this.readyState == 4 && this.status == 200) {
-        server_data = JSON.parse(this.responseText);
-        console.log("Connecting...")
-        console.log(server_data.ws_conn);
-        var ws = new WebSocket(server_data.ws_conn + "/client");
-        ws.onopen = function() {
-            console.log("Connected.");
-        }
-        ws.onmessage = function(event) {
-            tweetJson = JSON.parse(event.data);
-            tweetHtml = JSON.parse(tweetJson.html);
-            let newTweet = document.createElement("div");
-            newTweet.innerHTML = tweetHtml.html;
-            newTweet.classList = "w-25 p-3";
-            document.querySelector("tweets").prepend(newTweet);
-            twttr.widgets.load(newTweet);
-        };
-        ws.onclose = function() {
-            console.log("Random Screaming!")
-        }
-    }
+console.log("Connecting...")
+
+let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
+let ws = new WebSocket(scheme + window.location.host + "/board-ws");
+
+ws.onopen = function() {
+    console.log("Connected.");
+}
+
+ws.onmessage = function(event) {
+
+    tweetJson = JSON.parse(event.data);
+    tweetHtml = atob(tweetJson.html);
+    console.log(tweetHtml)
+
+    let newTweet = document.createElement("div");
+    newTweet.innerHTML = tweetHtml;
+    newTweet.classList = "w-25 p-3";
+    document.querySelector("tweets").prepend(newTweet);
+    twttr.widgets.load(newTweet);
 };
-xhttp.open("GET", "/info", true);
-xhttp.send();
+
+ws.onclose = function() {
+    // TODO
+}

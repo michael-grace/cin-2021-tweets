@@ -5,3 +5,4 @@ twitter_details
 config.py
 test.py
 typings
+*.key
