@@ -10,6 +10,7 @@ Required environment variables:
 -   `TWITTER_CONSUMER_SECRET`
 -   `TWITTER_OAUTH_TOKEN`
 -   `TWITTER_OAUTH_SECRET`
+-   `HASHTAG` (this must include the `#` character)
 
 ## Accessing
 

@@ -21,7 +21,7 @@ func GetTweetStream(tweets chan<- *twitter.Tweet) {
 	client := twitter.NewClient(httpClient)
 
 	params := &twitter.StreamFilterParams{
-		Track: []string{"#FridayFeeling"},
+		Track: []string{os.Getenv("HASHTAG")},
 	}
 
 	stream, err := client.Streams.Filter(params)

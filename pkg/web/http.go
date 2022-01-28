@@ -9,13 +9,14 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/dghubble/go-twitter/twitter"
 )
 
 func StartWebServer(tweets <-chan *twitter.Tweet) {
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "#CIN22")
+		fmt.Fprint(w, os.Getenv("HASHTAG"))
 	})
 
 	fs := http.FileServer(http.Dir("static"))
