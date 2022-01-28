@@ -6,3 +6,4 @@ config.py
 test.py
 typings
 *.key
+tweets
