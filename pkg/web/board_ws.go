@@ -9,27 +9,19 @@ package web
 import (
 	"fmt"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
-type boardWebsocketH struct {
-	clients map[*websocket.Conn]bool
-}
-
-var BoardWebsocketMaster boardWebsocketH = boardWebsocketH{clients: make(map[*websocket.Conn]bool)}
-
-func (h *boardWebsocketH) websocketHandler(w http.ResponseWriter, r *http.Request) {
+func (h *webEnv) boardWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Printf("Failed to generate upgrader: %s", err)
 		return
 	}
 
-	h.clients[ws] = true
+	h.boardWebsocketClients[ws] = true
 
 	defer func() {
-		delete(h.clients, ws)
+		delete(h.boardWebsocketClients, ws)
 		ws.Close()
 	}()
 
@@ -37,8 +29,8 @@ func (h *boardWebsocketH) websocketHandler(w http.ResponseWriter, r *http.Reques
 
 }
 
-func (h *boardWebsocketH) SendTweet(tweet TweetSummary) {
-	for client := range h.clients {
+func (h *webEnv) sendTweet(tweet TweetSummary) {
+	for client := range h.boardWebsocketClients {
 		client.WriteJSON(tweet)
 	}
 }

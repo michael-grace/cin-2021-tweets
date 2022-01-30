@@ -16,28 +16,20 @@ import (
 	"strings"
 
 	"github.com/dghubble/go-twitter/twitter"
-	"github.com/gorilla/websocket"
 )
 
-type controlWebsocketH struct {
-	client                 *websocket.Conn
-	tweetsForConsideration map[string]TweetSummary
-	blockedUsers           []string
-}
-
-var ControllerWebsocketMaster controlWebsocketH = controlWebsocketH{tweetsForConsideration: make(map[string]TweetSummary)}
-
-func (h *controlWebsocketH) websocketHandler(w http.ResponseWriter, r *http.Request, tweets <-chan *twitter.Tweet) {
+func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request, tweets <-chan *twitter.Tweet) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Printf("Failed to generate upgrader: %s", err)
 		return
 	}
 
-	h.client = ws
+	h.controllerWebsocketClients[ws] = true
+	fmt.Println(h.controllerWebsocketClients)
 
 	defer func() {
-		h.client = nil
+		delete(h.controllerWebsocketClients, ws)
 		ws.Close()
 	}()
 
@@ -59,12 +51,16 @@ func (h *controlWebsocketH) websocketHandler(w http.ResponseWriter, r *http.Requ
 
 		switch decision.Decision {
 		case "BLOCK":
-			h.blockedUsers = append(h.blockedUsers, h.tweetsForConsideration[decision.ID].User)
+			h.blockedUsers[h.tweetsForConsideration[decision.ID].User] = true
 
 		case "ACCEPT":
 			tweeet := h.tweetsForConsideration[decision.ID]
 
-			embed, err := http.Get(fmt.Sprintf("https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=dark&hide_media=true", tweeet.User, tweeet.ID))
+			embed, err := http.Get(
+				fmt.Sprintf(
+					"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=dark&hide_media=true",
+					tweeet.User,
+					tweeet.ID))
 
 			if err != nil {
 				fmt.Println(err)
@@ -85,7 +81,7 @@ func (h *controlWebsocketH) websocketHandler(w http.ResponseWriter, r *http.Requ
 
 			tweeet.TweetHTML = enc
 
-			BoardWebsocketMaster.SendTweet(tweeet)
+			h.sendTweet(tweeet)
 
 		}
 
@@ -94,32 +90,24 @@ func (h *controlWebsocketH) websocketHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (h *controlWebsocketH) HandleTweetsFromTwitter(tweets <-chan *twitter.Tweet) {
+func (h *webEnv) handleTweetsFromTwitter(tweets <-chan *twitter.Tweet) {
 	for tweet := range tweets {
-		if h.client != nil {
-			var blocked bool
+		fmt.Println(tweet)
+		if _, blocked := h.blockedUsers[tweet.User.ScreenName]; blocked {
+			continue
+		}
 
-			for _, blockedUser := range h.blockedUsers {
-				if tweet.User.ScreenName == blockedUser {
-					blocked = true
-					break
-				}
-			}
+		tweetSummary := TweetSummary{
+			ID:      tweet.IDStr,
+			Name:    tweet.User.Name,
+			User:    tweet.User.ScreenName,
+			Message: tweet.Text,
+		}
 
-			if blocked {
-				continue
-			}
+		h.tweetsForConsideration[tweetSummary.ID] = tweetSummary
 
-			tweetSummary := TweetSummary{
-				ID:      tweet.IDStr,
-				Name:    tweet.User.Name,
-				User:    tweet.User.ScreenName,
-				Message: tweet.Text,
-			}
-
-			h.tweetsForConsideration[tweetSummary.ID] = tweetSummary
-
-			err := h.client.WriteJSON(tweetSummary)
+		for client := range h.controllerWebsocketClients {
+			err := client.WriteJSON(tweetSummary)
 			if err != nil {
 				fmt.Println(err.Error())
 			}
