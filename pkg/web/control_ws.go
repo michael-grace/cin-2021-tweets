@@ -44,10 +44,28 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		var decision ControllerDecision
+		var decision struct {
+			ID       string `json:"id"`
+			Decision string `json:"decision"`
+		}
+
 		json.Unmarshal(message, &decision)
 
 		fmt.Printf("%v - %v", decision.Decision, h.tweetsForConsideration[decision.ID])
+
+		for client := range h.controllerWebsocketClients {
+			err = client.WriteJSON(struct {
+				Action string `json:"action"`
+				ID     string `json:"id"`
+			}{
+				Action: "REMOVE",
+				ID:     decision.ID,
+			})
+
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 
 		switch decision.Decision {
 		case "BLOCK":
@@ -74,7 +92,10 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 				fmt.Println(err)
 			}
 
-			var embedJson EmbedJson
+			var embedJson struct {
+				HTML string `json:"html"`
+			}
+
 			json.Unmarshal(j, &embedJson)
 
 			enc := base64.StdEncoding.EncodeToString([]byte(embedJson.HTML))
@@ -107,7 +128,14 @@ func (h *webEnv) handleTweetsFromTwitter(tweets <-chan *twitter.Tweet) {
 		h.tweetsForConsideration[tweetSummary.ID] = tweetSummary
 
 		for client := range h.controllerWebsocketClients {
-			err := client.WriteJSON(tweetSummary)
+			err := client.WriteJSON(struct {
+				TweetSummary
+				Action string `json:"action"`
+			}{
+				TweetSummary: tweetSummary,
+				Action:       "CONSIDER",
+			})
+
 			if err != nil {
 				fmt.Println(err.Error())
 			}

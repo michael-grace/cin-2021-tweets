@@ -20,15 +20,6 @@ type TweetSummary struct {
 	TweetHTML string `json:"html"`
 }
 
-type EmbedJson struct {
-	HTML string `json:"html"`
-}
-
-type ControllerDecision struct {
-	ID       string `json:"id"`
-	Decision string `json:"decision"`
-}
-
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true // TODO

@@ -38,6 +38,11 @@ ws.onclose = function() {
 ws.onmessage = function(event) {
     var message = JSON.parse(event.data);
 
+    if (message.action == "REMOVE") {
+        document.getElementById(message.id).remove();
+        return
+    }
+
     // Now lets put the tweet on the control screen
     var tweet = document.createElement("DIV");
     tweet.classList.add("card");
