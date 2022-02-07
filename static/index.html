@@ -19,10 +19,40 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
+    <style>
+        @font-face {
+            font-family: ElectionHeading;
+            src: url(https://assets-cdn.sums.su/YU/Fonts/Gotham+Black+Regular.ttf);
+        }
+        
+        @font-face {
+            font-family: ElectionBody;
+            src: url(https://assets-cdn.sums.su/YU/Fonts/Gotham+Book+Regular.otf);
+        }
+        
+        body {
+            background: #292929;
+            text-align: center;
+        }
+        
+        h1 {
+            font-family: ElectionHeading;
+            font-size: 400% !important;
+            color: #F96CDF;
+        }
+        
+        h2 {
+            font-family: ElectionBody;
+            font-size: 200% !important;
+            color: #FFFFFF
+        }
+    </style>
+
 </head>
 
 <body class="p-3">
-    <h1>Tweet Board</h1>
+    <h1>Candidate Interview Night</h1>
+    <h2 id="hashtag"></h2>
     <tweets class="d-flex flex-sm-wrap justify-content-end"></tweets>
     <script src="board.js"></script>
     <script>

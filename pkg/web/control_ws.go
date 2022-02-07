@@ -26,7 +26,6 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	h.controllerWebsocketClients[ws] = true
-	fmt.Println(h.controllerWebsocketClients)
 
 	defer func() {
 		delete(h.controllerWebsocketClients, ws)
@@ -76,7 +75,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 
 			embed, err := http.Get(
 				fmt.Sprintf(
-					"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=dark&hide_media=true",
+					"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=light&hide_media=true",
 					tweeet.User,
 					tweeet.ID))
 

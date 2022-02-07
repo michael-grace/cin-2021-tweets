@@ -42,9 +42,7 @@ func StartWebServer(tweets <-chan *twitter.Tweet) {
 		env.controllerWebsocketHandler(w, r, tweets)
 	})
 
-	http.HandleFunc("/board-ws", func(w http.ResponseWriter, r *http.Request) {
-		env.boardWebsocketHandler(w, r)
-	})
+	http.HandleFunc("/board-ws", env.boardWebsocketHandler)
 
 	go env.handleTweetsFromTwitter(tweets)
 

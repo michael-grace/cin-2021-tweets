@@ -33,3 +33,7 @@ ws.onmessage = function(event) {
 ws.onclose = function() {
     // TODO
 }
+
+fetch("/info").then(d => d.text()).then(t => {
+    document.getElementById("hashtag").innerHTML = t;
+})
