@@ -112,6 +112,10 @@ ws.onmessage = function(event) {
     document.getElementById("tweets").appendChild(tweet)
 }
 
-document.getElementById("clear").onclick = function() {
-    ws.send("CLEAR")
+document.getElementById("clear").onclick = () => {
+    ws.send("CLEAR_CONTROL")
+}
+
+document.getElementById("clear-board").onclick = () => {
+    ws.send("CLEAR_BOARD")
 }

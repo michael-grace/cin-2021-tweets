@@ -19,6 +19,10 @@ ws.onopen = function() {
 
 ws.onmessage = function(event) {
 
+    if (event.data === "CLEAR") {
+        document.getElementById("tweets").innerHTML = "";
+    }
+
     tweetJson = JSON.parse(event.data);
     tweetHtml = atob(tweetJson.html);
     console.log(tweetHtml)

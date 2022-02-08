@@ -45,9 +45,18 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 		}
 
 		switch string(message) {
-		case "CLEAR":
+		case "CLEAR_CONTROL":
 			h.tweetsForConsideration = make(map[string]TweetSummary)
 			for client := range h.controllerWebsocketClients {
+				err = client.WriteMessage(websocket.TextMessage, []byte("CLEAR"))
+
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+		case "CLEAR_BOARD":
+			for client := range h.boardWebsocketClients {
 				err = client.WriteMessage(websocket.TextMessage, []byte("CLEAR"))
 
 				if err != nil {
