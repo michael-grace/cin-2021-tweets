@@ -8,9 +8,7 @@
     github.com/UniversityRadioYork
  */
 
-document.getElementById("clear").onclick = function() {
-    document.getElementById("tweets").innerHTML = "";
-}
+
 
 fetch("/info").then(d => d.json()).then(j => {
     document.getElementById("hashtag").innerHTML = j.join(", ");
@@ -36,6 +34,11 @@ ws.onclose = function() {
 };
 
 ws.onmessage = function(event) {
+    if (event.data === "CLEAR") {
+        document.getElementById("tweets").innerHTML = "";
+        return
+    }
+
     var message = JSON.parse(event.data);
 
     if (message.action == "REMOVE") {
@@ -107,4 +110,8 @@ ws.onmessage = function(event) {
 
     tweet.appendChild(tweetCardBody);
     document.getElementById("tweets").appendChild(tweet)
+}
+
+document.getElementById("clear").onclick = function() {
+    ws.send("CLEAR")
 }

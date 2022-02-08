@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/dghubble/go-twitter/twitter"
+	"github.com/gorilla/websocket"
 )
 
 func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request, tweets <-chan *twitter.Tweet) {
@@ -43,70 +44,83 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		var decision struct {
-			ID       string `json:"id"`
-			Decision string `json:"decision"`
+		switch string(message) {
+		case "CLEAR":
+			h.tweetsForConsideration = make(map[string]TweetSummary)
+			for client := range h.controllerWebsocketClients {
+				err = client.WriteMessage(websocket.TextMessage, []byte("CLEAR"))
+
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+		default:
+
+			var decision struct {
+				ID       string `json:"id"`
+				Decision string `json:"decision"`
+			}
+
+			json.Unmarshal(message, &decision)
+
+			fmt.Printf("%v - %v", decision.Decision, h.tweetsForConsideration[decision.ID])
+
+			for client := range h.controllerWebsocketClients {
+				err = client.WriteJSON(struct {
+					Action string `json:"action"`
+					ID     string `json:"id"`
+				}{
+					Action: "REMOVE",
+					ID:     decision.ID,
+				})
+
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			switch decision.Decision {
+			case "BLOCK":
+				h.blockedUsers[h.tweetsForConsideration[decision.ID].User] = true
+
+			case "ACCEPT":
+				tweeet := h.tweetsForConsideration[decision.ID]
+
+				embed, err := http.Get(
+					fmt.Sprintf(
+						"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=light&hide_media=true",
+						tweeet.User,
+						tweeet.ID))
+
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				defer embed.Body.Close()
+
+				j, err := io.ReadAll(embed.Body)
+
+				if err != nil {
+					fmt.Println(err)
+				}
+
+				var embedJson struct {
+					HTML string `json:"html"`
+				}
+
+				json.Unmarshal(j, &embedJson)
+
+				enc := base64.StdEncoding.EncodeToString([]byte(embedJson.HTML))
+
+				tweeet.TweetHTML = enc
+
+				h.sendTweet(tweeet)
+
+			}
+
+			delete(h.tweetsForConsideration, decision.ID)
 		}
-
-		json.Unmarshal(message, &decision)
-
-		fmt.Printf("%v - %v", decision.Decision, h.tweetsForConsideration[decision.ID])
-
-		for client := range h.controllerWebsocketClients {
-			err = client.WriteJSON(struct {
-				Action string `json:"action"`
-				ID     string `json:"id"`
-			}{
-				Action: "REMOVE",
-				ID:     decision.ID,
-			})
-
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-
-		switch decision.Decision {
-		case "BLOCK":
-			h.blockedUsers[h.tweetsForConsideration[decision.ID].User] = true
-
-		case "ACCEPT":
-			tweeet := h.tweetsForConsideration[decision.ID]
-
-			embed, err := http.Get(
-				fmt.Sprintf(
-					"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=light&hide_media=true",
-					tweeet.User,
-					tweeet.ID))
-
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			defer embed.Body.Close()
-
-			j, err := io.ReadAll(embed.Body)
-
-			if err != nil {
-				fmt.Println(err)
-			}
-
-			var embedJson struct {
-				HTML string `json:"html"`
-			}
-
-			json.Unmarshal(j, &embedJson)
-
-			enc := base64.StdEncoding.EncodeToString([]byte(embedJson.HTML))
-
-			tweeet.TweetHTML = enc
-
-			h.sendTweet(tweeet)
-
-		}
-
-		delete(h.tweetsForConsideration, decision.ID)
-
 	}
 }
 
