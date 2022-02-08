@@ -34,6 +34,6 @@ ws.onclose = function() {
     // TODO
 }
 
-fetch("/info").then(d => d.text()).then(t => {
-    document.getElementById("hashtag").innerHTML = t;
+fetch("/info").then(d => d.json()).then(j => {
+    document.getElementById("hashtag").innerHTML = j.join(", ");
 })

@@ -14,7 +14,7 @@ import (
 	"github.com/dghubble/oauth1"
 )
 
-func GetTweetStream(tweets chan<- *twitter.Tweet) {
+func GetTweetStream(hashtags []string, tweets chan<- *twitter.Tweet) {
 
 	/**
 	I just want to let the world know, I spent absolutely
@@ -38,7 +38,7 @@ func GetTweetStream(tweets chan<- *twitter.Tweet) {
 	client := twitter.NewClient(httpClient)
 
 	params := &twitter.StreamFilterParams{
-		Track: []string{os.Getenv("HASHTAG")},
+		Track: hashtags,
 	}
 
 	stream, err := client.Streams.Filter(params)

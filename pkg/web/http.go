@@ -7,9 +7,9 @@ Author: Michael Grace <michael.grace@ury.org.uk>
 package web
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/gorilla/websocket"
@@ -22,7 +22,7 @@ type webEnv struct {
 	blockedUsers               map[string]bool
 }
 
-func StartWebServer(tweets <-chan *twitter.Tweet) {
+func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 
 	env := webEnv{
 		boardWebsocketClients:      make(map[*websocket.Conn]bool),
@@ -32,7 +32,14 @@ func StartWebServer(tweets <-chan *twitter.Tweet) {
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, os.Getenv("HASHTAG"))
+		jsonHashtags, err := json.Marshal(hashtags)
+
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Fprint(w, err.Error())
+		}
+
+		fmt.Fprint(w, string(jsonHashtags))
 	})
 
 	fs := http.FileServer(http.Dir("static"))
