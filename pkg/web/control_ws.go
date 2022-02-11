@@ -19,7 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request, tweets <-chan *twitter.Tweet) {
+func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Printf("Failed to generate upgrader: %s", err)
@@ -56,13 +56,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			}
 
 		case "CLEAR_BOARD":
-			for client := range h.boardWebsocketClients {
-				err = client.WriteMessage(websocket.TextMessage, []byte("CLEAR"))
-
-				if err != nil {
-					fmt.Println(err)
-				}
-			}
+			h.sendTextMessageToBoard("CLEAR")
 
 		default:
 

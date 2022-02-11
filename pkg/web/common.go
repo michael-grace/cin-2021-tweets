@@ -9,9 +9,17 @@ package web
 import (
 	"net/http"
 
+	"github.com/dghubble/go-twitter/twitter"
 	"github.com/gorilla/websocket"
 )
 
+type webEnv struct {
+	boardWebsocketClients      map[*websocket.Conn]bool
+	controllerWebsocketClients map[*websocket.Conn]bool
+	tweetsForConsideration     map[string]TweetSummary
+	blockedUsers               map[string]bool
+	tweets                     <-chan *twitter.Tweet
+}
 type TweetSummary struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`

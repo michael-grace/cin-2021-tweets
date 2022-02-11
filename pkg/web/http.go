@@ -15,13 +15,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type webEnv struct {
-	boardWebsocketClients      map[*websocket.Conn]bool
-	controllerWebsocketClients map[*websocket.Conn]bool
-	tweetsForConsideration     map[string]TweetSummary
-	blockedUsers               map[string]bool
-}
-
 func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 
 	env := webEnv{
@@ -29,6 +22,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 		controllerWebsocketClients: make(map[*websocket.Conn]bool),
 		tweetsForConsideration:     make(map[string]TweetSummary),
 		blockedUsers:               make(map[string]bool),
+		tweets:                     tweets,
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
@@ -45,9 +39,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
 
-	http.HandleFunc("/control-ws", func(w http.ResponseWriter, r *http.Request) {
-		env.controllerWebsocketHandler(w, r, tweets)
-	})
+	http.HandleFunc("/control-ws", env.controllerWebsocketHandler)
 
 	http.HandleFunc("/board-ws", env.boardWebsocketHandler)
 
