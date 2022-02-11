@@ -8,14 +8,6 @@
     github.com/UniversityRadioYork
  */
 
-
-
-fetch("/info").then(d => d.json()).then(j => {
-    document.getElementById("hashtag").innerHTML = j.join(", ");
-})
-
-// WebSocket Connection
-
 let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
 
 var alert = document.getElementById("server");
@@ -24,6 +16,42 @@ const handleWs = () => {
 
     let ws = new WebSocket(scheme + window.location.host + "/control-ws");
 
+    const createBlockedUser = (user) => {
+        let userCard = document.createElement("DIV");
+        userCard.classList.add("card");
+        userCard.id = user
+
+        let userCardBody = document.createElement("DIV")
+        userCardBody.classList.add("card-body")
+
+        let userName = document.createElement("P")
+        userName.innerText = user;
+        userName.classList.add("card-text")
+
+        userCardBody.appendChild(userName)
+
+        let unblockButton = document.createElement("BUTTON");
+        unblockButton.classList.add("btn", "btn-warning", "btn-sm");
+        unblockButton.innerText = "Unblock";
+
+        unblockButton.onclick = () => {
+            ws.send(JSON.stringify({
+                "id": user,
+                "decision": "UNBLOCK"
+            }))
+        }
+
+        userCardBody.appendChild(unblockButton)
+        userCard.appendChild(userCardBody)
+        document.getElementById("blocked").appendChild(userCard)
+    }
+
+    fetch("/info").then(d => d.json()).then(j => {
+        document.getElementById("hashtag").innerHTML = j.hashtags.join(", ");
+        j.blockedUsers.forEach((user) => {
+            createBlockedUser(user)
+        })
+    })
 
     ws.onopen = () => {
         alert.innerText = "Connected to Server";
@@ -49,6 +77,12 @@ const handleWs = () => {
 
         if (message.action == "REMOVE") {
             document.getElementById(message.id).remove();
+            return
+        } else if (message.action == "UNBLOCK") {
+            document.getElementById(message.user).remove()
+            return
+        } else if (message.action == "BLOCK") {
+            createBlockedUser(message.user)
             return
         }
 
@@ -79,7 +113,6 @@ const handleWs = () => {
                 "id": message.id,
                 "decision": "ACCEPT"
             }));
-            document.getElementById(message.id.toString()).remove();
         }
 
         tweetCardBody.appendChild(acceptButton);
@@ -93,7 +126,6 @@ const handleWs = () => {
                 "id": message.id,
                 "decision": "REJECT"
             }));
-            document.getElementById(message.id.toString()).remove();
         }
 
         tweetCardBody.appendChild(rejectButton);
@@ -109,7 +141,6 @@ const handleWs = () => {
                     "decision": "BLOCK"
                 }));
             }
-            document.getElementById(message.id.toString()).remove();
         }
 
         tweetCardBody.appendChild(blockButton);

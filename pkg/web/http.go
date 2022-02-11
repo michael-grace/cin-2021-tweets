@@ -26,7 +26,18 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		jsonHashtags, err := json.Marshal(hashtags)
+		var blockedUsers []string
+		for user := range env.blockedUsers {
+			blockedUsers = append(blockedUsers, user)
+		}
+
+		jsonHashtags, err := json.Marshal(struct {
+			Hashtags     []string `json:"hashtags"`
+			BlockedUsers []string `json:"blockedUsers"`
+		}{
+			Hashtags:     hashtags,
+			BlockedUsers: blockedUsers,
+		})
 
 		if err != nil {
 			w.WriteHeader(500)

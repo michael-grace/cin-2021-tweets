@@ -48,7 +48,7 @@ const handleWs = () => {
 }
 
 fetch("/info").then(d => d.json()).then(j => {
-    document.getElementById("hashtag").innerHTML = j.join(", ");
+    document.getElementById("hashtag").innerHTML = j.hashtags.join(", ");
 })
 
 handleWs()

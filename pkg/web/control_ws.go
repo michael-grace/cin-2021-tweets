@@ -19,6 +19,27 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type BlockStatus string
+
+const (
+	BlockUser   BlockStatus = "BLOCK"
+	UnblockUser BlockStatus = "UNBLOCK"
+)
+
+func (h *webEnv) changeBlockStatus(blockStatus BlockStatus, user string) {
+	for client := range h.controllerWebsocketClients {
+		if err := client.WriteJSON(struct {
+			Action string `json:"action"`
+			User   string `json:"user"`
+		}{
+			Action: string(blockStatus),
+			User:   user,
+		}); err != nil {
+			fmt.Println(err.Error())
+		}
+	}
+}
+
 func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -67,6 +88,14 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 
 			json.Unmarshal(message, &decision)
 
+			if decision.Decision == "UNBLOCK" {
+				delete(h.blockedUsers, decision.ID)
+				h.changeBlockStatus(UnblockUser, decision.ID)
+				break
+			}
+
+			// If we get to here, we're dealing with a tweet that
+			// is under consideration
 			fmt.Printf("%v - %v", decision.Decision, h.tweetsForConsideration[decision.ID])
 
 			for client := range h.controllerWebsocketClients {
@@ -86,6 +115,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			switch decision.Decision {
 			case "BLOCK":
 				h.blockedUsers[h.tweetsForConsideration[decision.ID].User] = true
+				h.changeBlockStatus(BlockUser, h.tweetsForConsideration[decision.ID].User)
 
 			case "ACCEPT":
 				tweeet := h.tweetsForConsideration[decision.ID]
