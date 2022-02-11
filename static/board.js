@@ -11,33 +11,44 @@
 console.log("Connecting...")
 
 let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
-let ws = new WebSocket(scheme + window.location.host + "/board-ws");
 
-ws.onopen = function() {
-    console.log("Connected.");
-}
+const handleWs = () => {
 
-ws.onmessage = function(event) {
+    let ws = new WebSocket(scheme + window.location.host + "/board-ws");
 
-    if (event.data === "CLEAR") {
-        document.getElementById("tweets").innerHTML = "";
+    ws.onopen = () => {
+        console.log("Connected.");
+        document.getElementById("warning").hidden = true;
     }
 
-    tweetJson = JSON.parse(event.data);
-    tweetHtml = atob(tweetJson.html);
-    console.log(tweetHtml)
+    ws.onmessage = (event) => {
 
-    let newTweet = document.createElement("div");
-    newTweet.innerHTML = tweetHtml;
-    newTweet.classList = "w-25 p-3";
-    document.querySelector("tweets").prepend(newTweet);
-    twttr.widgets.load(newTweet);
-};
+        if (event.data === "CLEAR") {
+            document.getElementById("tweets").innerHTML = "";
+            return;
+        }
 
-ws.onclose = function() {
-    // TODO
+        tweetJson = JSON.parse(event.data);
+        tweetHtml = atob(tweetJson.html);
+        console.log(tweetHtml)
+
+        let newTweet = document.createElement("div");
+        newTweet.innerHTML = tweetHtml;
+        newTweet.classList = "w-25 p-3";
+        document.querySelector("tweets").prepend(newTweet);
+        twttr.widgets.load(newTweet);
+    };
+
+    ws.onclose = () => {
+        document.getElementById("warning").hidden = false;
+        console.log("reconnecting in 1 sec")
+        setTimeout(() => { handleWs() }, 1000)
+    }
+
 }
 
 fetch("/info").then(d => d.json()).then(j => {
     document.getElementById("hashtag").innerHTML = j.join(", ");
 })
+
+handleWs()
