@@ -16,7 +16,6 @@ import (
 	"strings"
 
 	"github.com/dghubble/go-twitter/twitter"
-	"github.com/gorilla/websocket"
 )
 
 type BlockStatus string
@@ -26,18 +25,33 @@ const (
 	UnblockUser BlockStatus = "UNBLOCK"
 )
 
-func (h *webEnv) changeBlockStatus(blockStatus BlockStatus, user string) {
+func (h *webEnv) sendJSONToControllers(data interface{}) {
 	for client := range h.controllerWebsocketClients {
-		if err := client.WriteJSON(struct {
-			Action string `json:"action"`
-			User   string `json:"user"`
-		}{
-			Action: string(blockStatus),
-			User:   user,
-		}); err != nil {
-			fmt.Println(err.Error())
+		if err := client.WriteJSON(data); err != nil {
+			fmt.Println(err)
 		}
 	}
+}
+
+func (h *webEnv) changeBlockStatus(blockStatus BlockStatus, user string) {
+	h.sendJSONToControllers(struct {
+		Action string `json:"action"`
+		User   string `json:"user"`
+	}{
+		Action: string(blockStatus),
+		User:   user,
+	})
+}
+
+func (h *webEnv) removeTweetFromConsideration(id string) {
+	delete(h.tweetsForConsideration, id)
+	h.sendJSONToControllers(struct {
+		Action string `json:"action"`
+		ID     string `json:"id"`
+	}{
+		Action: "REMOVE",
+		ID:     id,
+	})
 }
 
 func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -65,130 +79,104 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			}
 		}
 
-		switch string(message) {
+		var messageContent struct {
+			Action  string `json:"action"`
+			Content string `json:"content"`
+		}
+
+		if err = json.Unmarshal(message, &messageContent); err != nil {
+			fmt.Println(err.Error())
+		}
+
+		switch messageContent.Action {
 		case "CLEAR_CONTROL":
 			h.tweetsForConsideration = make(map[string]TweetSummary)
-			for client := range h.controllerWebsocketClients {
-				err = client.WriteMessage(websocket.TextMessage, []byte("CLEAR"))
-
-				if err != nil {
-					fmt.Println(err)
-				}
-			}
+			h.sendJSONToControllers(struct {
+				Action string `json:"action"`
+			}{
+				Action: "CLEAR_CONTROL",
+			})
 
 		case "CLEAR_BOARD":
 			h.sendTextMessageToBoard("CLEAR")
+			h.recentlySentToBoard = make(chan *TweetSummary, 8)
+			h.sendJSONToControllers(struct {
+				Action string `json:"action"`
+			}{
+				Action: "CLEAR_BOARD",
+			})
 
-		default:
+		case "UNBLOCK":
+			delete(h.blockedUsers, messageContent.Content)
+			h.changeBlockStatus(UnblockUser, messageContent.Content)
 
-			var decision struct {
-				ID       string `json:"id"`
-				Decision string `json:"decision"`
+		case "BLOCK":
+			user := h.tweetsForConsideration[messageContent.Content].User
+			h.blockedUsers[user] = true
+			h.changeBlockStatus(BlockUser, user)
+			h.removeTweetFromConsideration(messageContent.Content)
+
+		case "REJECT":
+			h.removeTweetFromConsideration(messageContent.Content)
+
+		case "ACCEPT":
+			tweet := h.tweetsForConsideration[messageContent.Content]
+			embed, err := http.Get(
+				fmt.Sprintf(
+					"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=light",
+					tweet.User,
+					tweet.ID))
+
+			if err != nil {
+				fmt.Println(err.Error())
 			}
 
-			json.Unmarshal(message, &decision)
-
-			if decision.Decision == "UNBLOCK" {
-				delete(h.blockedUsers, decision.ID)
-				h.changeBlockStatus(UnblockUser, decision.ID)
-				break
+			j, err := io.ReadAll(embed.Body)
+			if err != nil {
+				fmt.Println(err.Error())
 			}
 
-			// If we get to here, we're dealing with a tweet that
-			// is under consideration
-			fmt.Printf("%v - %v", decision.Decision, h.tweetsForConsideration[decision.ID])
+			var embedJson struct {
+				HTML string `json:"html"`
+			}
 
-			for client := range h.controllerWebsocketClients {
-				err = client.WriteJSON(struct {
-					Action string `json:"action"`
-					ID     string `json:"id"`
+			json.Unmarshal(j, &embedJson)
+
+			tweet.TweetHTML = base64.StdEncoding.EncodeToString([]byte(embedJson.HTML))
+
+			h.sendTweet(tweet)
+
+			if len(h.recentlySentToBoard) == cap(h.recentlySentToBoard) {
+				// Tell controllers tweet no longer recent
+				oldTweet := <-h.recentlySentToBoard
+				h.sendJSONToControllers(struct {
+					Action string       `json:"action"`
+					Tweet  TweetSummary `json:"tweet"`
 				}{
-					Action: "REMOVE",
-					ID:     decision.ID,
+					Action: "UNRECENT",
+					Tweet:  *oldTweet,
 				})
-
-				if err != nil {
-					fmt.Println(err)
-				}
 			}
 
-			switch decision.Decision {
-			case "BLOCK":
-				h.blockedUsers[h.tweetsForConsideration[decision.ID].User] = true
-				h.changeBlockStatus(BlockUser, h.tweetsForConsideration[decision.ID].User)
+			// Tell controllers about new tweet
+			h.recentlySentToBoard <- &tweet
+			h.sendJSONToControllers(struct {
+				Action string       `json:"action"`
+				Tweet  TweetSummary `json:"tweet"`
+			}{
+				Action: "RECENT",
+				Tweet:  tweet,
+			})
 
-			case "ACCEPT":
-				tweeet := h.tweetsForConsideration[decision.ID]
+			h.removeTweetFromConsideration(messageContent.Content)
 
-				embed, err := http.Get(
-					fmt.Sprintf(
-						"https://publish.twitter.com/oembed?url=https://twitter.com/%s/status/%s&hide_thread=true&theme=light&hide_media=true",
-						tweeet.User,
-						tweeet.ID))
-
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				defer embed.Body.Close()
-
-				j, err := io.ReadAll(embed.Body)
-
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				var embedJson struct {
-					HTML string `json:"html"`
-				}
-
-				json.Unmarshal(j, &embedJson)
-
-				enc := base64.StdEncoding.EncodeToString([]byte(embedJson.HTML))
-
-				tweeet.TweetHTML = enc
-
-				h.sendTweet(tweeet)
-
-				if len(h.recentlySentToBoard) == cap(h.recentlySentToBoard) {
-					// Tell Controller Clients It's No Longer Recent
-					oldTweet := <-h.recentlySentToBoard
-					for client := range h.controllerWebsocketClients {
-						if err := client.WriteJSON(struct {
-							Action string       `json:"action"`
-							Tweet  TweetSummary `json:"tweet"`
-						}{
-							Action: "UNRECENT",
-							Tweet:  *oldTweet,
-						}); err != nil {
-							fmt.Println(err.Error())
-						}
-					}
-				}
-
-				// Tell Controller Clients We've Got A New Recent Tweet
-				h.recentlySentToBoard <- &tweeet
-				for client := range h.controllerWebsocketClients {
-					if err := client.WriteJSON(struct {
-						Action string       `json:"action"`
-						Tweet  TweetSummary `json:"tweet"`
-					}{
-						Action: "RECENT",
-						Tweet:  tweeet,
-					}); err != nil {
-						fmt.Println(err.Error())
-					}
-				}
-			}
-
-			delete(h.tweetsForConsideration, decision.ID)
 		}
+
 	}
 }
 
 func (h *webEnv) handleTweetsFromTwitter(tweets <-chan *twitter.Tweet) {
 	for tweet := range tweets {
-		fmt.Println(tweet)
 		if _, blocked := h.blockedUsers[tweet.User.ScreenName]; blocked {
 			continue
 		}
@@ -202,18 +190,13 @@ func (h *webEnv) handleTweetsFromTwitter(tweets <-chan *twitter.Tweet) {
 
 		h.tweetsForConsideration[tweetSummary.ID] = tweetSummary
 
-		for client := range h.controllerWebsocketClients {
-			err := client.WriteJSON(struct {
-				TweetSummary
-				Action string `json:"action"`
-			}{
-				TweetSummary: tweetSummary,
-				Action:       "CONSIDER",
-			})
+		h.sendJSONToControllers(struct {
+			Action string       `json:"action"`
+			Tweet  TweetSummary `json:"tweet"`
+		}{
+			Action: "CONSIDER",
+			Tweet:  tweetSummary,
+		})
 
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-		}
 	}
 }

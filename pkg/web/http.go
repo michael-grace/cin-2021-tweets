@@ -27,7 +27,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		var blockedUsers []string
+		var blockedUsers []string = make([]string, 0)
 		for user := range env.blockedUsers {
 			blockedUsers = append(blockedUsers, user)
 		}

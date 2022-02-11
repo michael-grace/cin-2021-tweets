@@ -36,8 +36,8 @@ const handleWs = () => {
 
         unblockButton.onclick = () => {
             ws.send(JSON.stringify({
-                "id": user,
-                "decision": "UNBLOCK"
+                "content": user,
+                "action": "UNBLOCK"
             }))
         }
 
@@ -68,14 +68,13 @@ const handleWs = () => {
     };
 
     ws.onmessage = (event) => {
-        if (event.data === "CLEAR") {
-            document.getElementById("tweets").innerHTML = "";
-            return
-        }
 
         var message = JSON.parse(event.data);
 
-        if (message.action == "REMOVE") {
+        if (message.action === "CLEAR_CONTROL") {
+            document.getElementById("tweets").innerHTML = "";
+            return
+        } else if (message.action == "REMOVE") {
             document.getElementById(message.id).remove();
             return
         } else if (message.action == "UNBLOCK") {
@@ -84,23 +83,29 @@ const handleWs = () => {
         } else if (message.action == "BLOCK") {
             createBlockedUser(message.user)
             return
+        } else if (message.action == "RECENT") {
+            return
+        } else if (message.action == "UNRECENT") {
+            return
         }
+
+        // CONSIDER TWEET
 
         // Now lets put the tweet on the control screen
         var tweet = document.createElement("DIV");
         tweet.classList.add("card");
-        tweet.id = message.id.toString()
+        tweet.id = message.tweet.id.toString()
 
         var tweetCardBody = document.createElement("DIV");
         tweetCardBody.classList.add("card-body");
 
         var tweetTitle = document.createElement("H4");
-        tweetTitle.innerText = message.name + " - @" + message.user;
+        tweetTitle.innerText = message.tweet.name + " - @" + message.tweet.user;
         tweetTitle.classList.add("card-title");
         tweetCardBody.appendChild(tweetTitle);
 
         var tweetBody = document.createElement("P");
-        tweetBody.innerText = message.tweet;
+        tweetBody.innerText = message.tweet.tweet;
         tweetBody.classList.add("card-text");
         tweetCardBody.appendChild(tweetBody);
 
@@ -110,8 +115,8 @@ const handleWs = () => {
 
         acceptButton.onclick = () => {
             ws.send(JSON.stringify({
-                "id": message.id,
-                "decision": "ACCEPT"
+                "content": message.tweet.id,
+                "action": "ACCEPT"
             }));
         }
 
@@ -123,8 +128,8 @@ const handleWs = () => {
 
         rejectButton.onclick = () => {
             ws.send(JSON.stringify({
-                "id": message.id,
-                "decision": "REJECT"
+                "content": message.tweet.id,
+                "action": "REJECT"
             }));
         }
 
@@ -135,10 +140,10 @@ const handleWs = () => {
         blockButton.innerText = "Block User";
 
         blockButton.onclick = () => {
-            if (confirm("Are you sure you want to block @" + message.user + "?")) {
+            if (confirm("Are you sure you want to block @" + message.tweet.user + "?")) {
                 ws.send(JSON.stringify({
-                    "id": message.id,
-                    "decision": "BLOCK"
+                    "content": message.tweet.id,
+                    "action": "BLOCK"
                 }));
             }
         }
@@ -151,11 +156,15 @@ const handleWs = () => {
 
 
     document.getElementById("clear").onclick = () => {
-        ws.send("CLEAR_CONTROL")
+        ws.send(JSON.stringify({
+            "action": "CLEAR_CONTROL"
+        }))
     }
 
     document.getElementById("clear-board").onclick = () => {
-        ws.send("CLEAR_BOARD")
+        ws.send(JSON.stringify({
+            "action": "CLEAR_BOARD"
+        }))
     }
 
 }
