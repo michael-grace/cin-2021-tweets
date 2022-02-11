@@ -19,6 +19,7 @@ type webEnv struct {
 	tweetsForConsideration     map[string]TweetSummary
 	blockedUsers               map[string]bool
 	tweets                     <-chan *twitter.Tweet
+	recentlySentToBoard        chan *TweetSummary
 }
 type TweetSummary struct {
 	ID        string `json:"id"`

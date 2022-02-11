@@ -23,6 +23,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 		tweetsForConsideration:     make(map[string]TweetSummary),
 		blockedUsers:               make(map[string]bool),
 		tweets:                     tweets,
+		recentlySentToBoard:        make(chan *TweetSummary, 8),
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {

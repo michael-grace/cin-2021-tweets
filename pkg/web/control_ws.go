@@ -150,6 +150,35 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 
 				h.sendTweet(tweeet)
 
+				if len(h.recentlySentToBoard) == cap(h.recentlySentToBoard) {
+					// Tell Controller Clients It's No Longer Recent
+					oldTweet := <-h.recentlySentToBoard
+					for client := range h.controllerWebsocketClients {
+						if err := client.WriteJSON(struct {
+							Action string       `json:"action"`
+							Tweet  TweetSummary `json:"tweet"`
+						}{
+							Action: "UNRECENT",
+							Tweet:  *oldTweet,
+						}); err != nil {
+							fmt.Println(err.Error())
+						}
+					}
+				}
+
+				// Tell Controller Clients We've Got A New Recent Tweet
+				h.recentlySentToBoard <- &tweeet
+				for client := range h.controllerWebsocketClients {
+					if err := client.WriteJSON(struct {
+						Action string       `json:"action"`
+						Tweet  TweetSummary `json:"tweet"`
+					}{
+						Action: "RECENT",
+						Tweet:  tweeet,
+					}); err != nil {
+						fmt.Println(err.Error())
+					}
+				}
 			}
 
 			delete(h.tweetsForConsideration, decision.ID)
