@@ -98,12 +98,33 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			})
 
 		case "CLEAR_BOARD":
-			h.sendTextMessageToBoard("CLEAR")
+			h.sendJSONToBoard(struct {
+				Action string `json:"action"`
+			}{
+				Action: "CLEAR",
+			})
 			h.recentlySentToBoard = make(chan *TweetSummary, 8)
 			h.sendJSONToControllers(struct {
 				Action string `json:"action"`
 			}{
 				Action: "CLEAR_BOARD",
+			})
+
+		case "BOARD_REMOVE":
+			h.sendJSONToControllers(struct {
+				Action string `json:"action"`
+				ID     string `json:"id"`
+			}{
+				Action: "UNRECENT",
+				ID:     messageContent.Content,
+			})
+
+			h.sendJSONToBoard(struct {
+				Action string `json:"action"`
+				ID     string `json:"id"`
+			}{
+				Action: "REMOVE",
+				ID:     messageContent.Content,
 			})
 
 		case "UNBLOCK":
@@ -150,11 +171,11 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 				// Tell controllers tweet no longer recent
 				oldTweet := <-h.recentlySentToBoard
 				h.sendJSONToControllers(struct {
-					Action string       `json:"action"`
-					Tweet  TweetSummary `json:"tweet"`
+					Action string `json:"action"`
+					ID     string `json:"id"`
 				}{
 					Action: "UNRECENT",
-					Tweet:  *oldTweet,
+					ID:     oldTweet.ID,
 				})
 			}
 

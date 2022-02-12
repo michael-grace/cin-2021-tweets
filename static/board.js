@@ -23,17 +23,21 @@ const handleWs = () => {
 
     ws.onmessage = (event) => {
 
-        if (event.data === "CLEAR") {
+        let message = JSON.parse(event.data);
+
+        if (message.action === "CLEAR") {
             document.getElementById("tweets").innerHTML = "";
             return;
+        } else if (message.action === "REMOVE") {
+            document.getElementById(message.id).remove()
+            return
         }
 
-        tweetJson = JSON.parse(event.data);
-        tweetHtml = atob(tweetJson.html);
-        console.log(tweetHtml)
+        tweetHtml = atob(message.tweet.html);
 
         let newTweet = document.createElement("div");
         newTweet.innerHTML = tweetHtml;
+        newTweet.id = message.tweet.id;
         newTweet.classList = "w-25 p-3";
         document.querySelector("tweets").prepend(newTweet);
         twttr.widgets.load(newTweet);

@@ -9,8 +9,6 @@ package web
 import (
 	"fmt"
 	"net/http"
-
-	"github.com/gorilla/websocket"
 )
 
 func (h *webEnv) boardWebsocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,16 +31,22 @@ func (h *webEnv) boardWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *webEnv) sendTweet(tweet TweetSummary) {
 	for client := range h.boardWebsocketClients {
-		if err := client.WriteJSON(tweet); err != nil {
+		if err := client.WriteJSON(struct {
+			Action string       `json:"action"`
+			Tweet  TweetSummary `json:"tweet"`
+		}{
+			Action: "ADD",
+			Tweet:  tweet,
+		}); err != nil {
 			fmt.Println(err)
 		}
 	}
 }
 
-func (h *webEnv) sendTextMessageToBoard(message string) {
+func (h *webEnv) sendJSONToBoard(data interface{}) {
 	for client := range h.boardWebsocketClients {
-		if err := client.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
-			fmt.Println(err.Error())
+		if err := client.WriteJSON(data); err != nil {
+			fmt.Println(err)
 		}
 	}
 }

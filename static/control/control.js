@@ -10,7 +10,7 @@
 
 let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
 
-var alert = document.getElementById("server");
+let alert = document.getElementById("server");
 
 const handleWs = () => {
 
@@ -69,13 +69,13 @@ const handleWs = () => {
 
     ws.onmessage = (event) => {
 
-        var message = JSON.parse(event.data);
+        let message = JSON.parse(event.data);
 
         if (message.action === "CLEAR_CONTROL") {
             document.getElementById("tweets").innerHTML = "";
             return
         } else if (message.action == "REMOVE") {
-            document.getElementById(message.id).remove();
+            document.getElementById("consider-" + message.id).remove();
             return
         } else if (message.action == "UNBLOCK") {
             document.getElementById(message.user).remove()
@@ -83,75 +83,95 @@ const handleWs = () => {
         } else if (message.action == "BLOCK") {
             createBlockedUser(message.user)
             return
-        } else if (message.action == "RECENT") {
-            return
         } else if (message.action == "UNRECENT") {
+            document.getElementById("recent-" + message.id).remove();
             return
+        } else if (message.action == "CLEAR_BOARD") {
+            document.getElementById("recents").innerHTML = "";
         }
 
-        // CONSIDER TWEET
+        // CONSIDER tweet or RECENT tweet
 
         // Now lets put the tweet on the control screen
-        var tweet = document.createElement("DIV");
+        let tweet = document.createElement("DIV");
         tweet.classList.add("card");
-        tweet.id = message.tweet.id.toString()
+        tweet.id = (message.action == "CONSIDER" ? "consider-" : "recent-") + message.tweet.id.toString()
 
-        var tweetCardBody = document.createElement("DIV");
+        let tweetCardBody = document.createElement("DIV");
         tweetCardBody.classList.add("card-body");
 
-        var tweetTitle = document.createElement("H4");
+        let tweetTitle = document.createElement("H4");
         tweetTitle.innerText = message.tweet.name + " - @" + message.tweet.user;
         tweetTitle.classList.add("card-title");
         tweetCardBody.appendChild(tweetTitle);
 
-        var tweetBody = document.createElement("P");
+        let tweetBody = document.createElement("P");
         tweetBody.innerText = message.tweet.tweet;
         tweetBody.classList.add("card-text");
         tweetCardBody.appendChild(tweetBody);
 
-        var acceptButton = document.createElement("BUTTON");
-        acceptButton.classList.add("btn", "btn-primary", "btn-sm");
-        acceptButton.innerText = "Accept Tweet";
+        if (message.action == "CONSIDER") {
+            let acceptButton = document.createElement("BUTTON");
+            acceptButton.classList.add("btn", "btn-primary", "btn-sm");
+            acceptButton.innerText = "Accept Tweet";
 
-        acceptButton.onclick = () => {
-            ws.send(JSON.stringify({
-                "content": message.tweet.id,
-                "action": "ACCEPT"
-            }));
-        }
-
-        tweetCardBody.appendChild(acceptButton);
-
-        var rejectButton = document.createElement("BUTTON");
-        rejectButton.classList.add("btn", "btn-danger", "btn-sm");
-        rejectButton.innerText = "Reject Tweet";
-
-        rejectButton.onclick = () => {
-            ws.send(JSON.stringify({
-                "content": message.tweet.id,
-                "action": "REJECT"
-            }));
-        }
-
-        tweetCardBody.appendChild(rejectButton);
-
-        var blockButton = document.createElement("BUTTON");
-        blockButton.classList.add("btn", "btn-warning", "btn-sm");
-        blockButton.innerText = "Block User";
-
-        blockButton.onclick = () => {
-            if (confirm("Are you sure you want to block @" + message.tweet.user + "?")) {
+            acceptButton.onclick = () => {
                 ws.send(JSON.stringify({
                     "content": message.tweet.id,
-                    "action": "BLOCK"
+                    "action": "ACCEPT"
                 }));
             }
+
+            tweetCardBody.appendChild(acceptButton);
+
+            let rejectButton = document.createElement("BUTTON");
+            rejectButton.classList.add("btn", "btn-danger", "btn-sm");
+            rejectButton.innerText = "Reject Tweet";
+
+            rejectButton.onclick = () => {
+                ws.send(JSON.stringify({
+                    "content": message.tweet.id,
+                    "action": "REJECT"
+                }));
+            }
+
+            tweetCardBody.appendChild(rejectButton);
+
+            let blockButton = document.createElement("BUTTON");
+            blockButton.classList.add("btn", "btn-warning", "btn-sm");
+            blockButton.innerText = "Block User";
+
+            blockButton.onclick = () => {
+                if (confirm("Are you sure you want to block @" + message.tweet.user + "?")) {
+                    ws.send(JSON.stringify({
+                        "content": message.tweet.id,
+                        "action": "BLOCK"
+                    }));
+                }
+            }
+
+            tweetCardBody.appendChild(blockButton);
+
+        } else if (message.action == "RECENT") {
+            let removeButton = document.createElement("BUTTON");
+            removeButton.classList.add("btn", "btn-warning", "btn-sm");
+            removeButton.innerText = "Remove from Wall";
+
+            removeButton.onclick = () => {
+                if (confirm("Are you sure you want to remove this tweet from the wall?")) {
+                    ws.send(JSON.stringify({
+                        "action": "BOARD_REMOVE",
+                        "content": message.tweet.id
+                    }))
+                }
+            }
+
+            tweetCardBody.appendChild(removeButton)
         }
 
-        tweetCardBody.appendChild(blockButton);
-
         tweet.appendChild(tweetCardBody);
-        document.getElementById("tweets").appendChild(tweet)
+
+        document.getElementById(message.action == "CONSIDER" ? "tweets" : "recents").appendChild(tweet)
     }
 
 
