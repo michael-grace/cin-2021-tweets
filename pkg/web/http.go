@@ -12,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/dghubble/go-twitter/twitter"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -24,6 +25,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 		blockedUsers:               make(map[string]bool),
 		tweets:                     tweets,
 		recentlySentToBoard:        make(chan *TweetSummary, 8),
+		wsAuthToken:                uuid.New(),
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
@@ -48,8 +50,14 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 		fmt.Fprint(w, string(jsonHashtags))
 	})
 
+	http.Handle("/ws-auth", authHandler{wsAuthHandler{
+		authToken: env.wsAuthToken,
+	}})
+
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
+
+	http.Handle("/control/", authHandler{handler: fs})
 
 	http.HandleFunc("/control-ws", env.controllerWebsocketHandler)
 

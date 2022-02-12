@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	"github.com/dghubble/go-twitter/twitter"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -20,6 +21,7 @@ type webEnv struct {
 	blockedUsers               map[string]bool
 	tweets                     <-chan *twitter.Tweet
 	recentlySentToBoard        chan *TweetSummary
+	wsAuthToken                uuid.UUID
 }
 type TweetSummary struct {
 	ID        string `json:"id"`

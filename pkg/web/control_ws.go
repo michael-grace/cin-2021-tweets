@@ -61,12 +61,9 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	h.controllerWebsocketClients[ws] = true
+	defer ws.Close()
 
-	defer func() {
-		delete(h.controllerWebsocketClients, ws)
-		ws.Close()
-	}()
+	var wsAuthenticated bool
 
 	for {
 		_, message, err := ws.ReadMessage()
@@ -88,7 +85,43 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			fmt.Println(err.Error())
 		}
 
+		if !wsAuthenticated && messageContent.Action != "AUTH" {
+			ws.WriteJSON(struct {
+				Action string `json:"action"`
+				OK     bool   `json:"ok"`
+			}{
+				Action: "AUTH",
+				OK:     false,
+			})
+			continue
+		}
+
 		switch messageContent.Action {
+		case "AUTH":
+			if messageContent.Content == h.wsAuthToken.String() {
+				ws.WriteJSON(struct {
+					Action string `json:"action"`
+					OK     bool   `json:"ok"`
+				}{
+					Action: "AUTH",
+					OK:     true,
+				})
+				wsAuthenticated = true
+
+				h.controllerWebsocketClients[ws] = true
+
+				defer func() {
+					delete(h.controllerWebsocketClients, ws)
+				}()
+			} else {
+				ws.WriteJSON(struct {
+					Action string `json:"action"`
+					OK     bool   `json:"ok"`
+				}{
+					Action: "AUTH",
+					OK:     false,
+				})
+			}
 		case "CLEAR_CONTROL":
 			h.tweetsForConsideration = make(map[string]TweetSummary)
 			h.sendJSONToControllers(struct {
