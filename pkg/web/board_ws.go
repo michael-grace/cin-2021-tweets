@@ -7,14 +7,15 @@ Author: Michael Grace <michael.grace@ury.org.uk>
 package web
 
 import (
-	"fmt"
 	"net/http"
+
+	"github.com/michael-grace/cin-2021-tweets/pkg/logging"
 )
 
 func (h *webEnv) boardWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Printf("Failed to generate upgrader: %s", err)
+		logging.Error(err)
 		return
 	}
 
@@ -38,7 +39,7 @@ func (h *webEnv) sendTweet(tweet TweetSummary) {
 			Action: "ADD",
 			Tweet:  tweet,
 		}); err != nil {
-			fmt.Println(err)
+			logging.Error(err)
 		}
 	}
 }
@@ -46,7 +47,7 @@ func (h *webEnv) sendTweet(tweet TweetSummary) {
 func (h *webEnv) sendJSONToBoard(data interface{}) {
 	for client := range h.boardWebsocketClients {
 		if err := client.WriteJSON(data); err != nil {
-			fmt.Println(err)
+			logging.Error(err)
 		}
 	}
 }

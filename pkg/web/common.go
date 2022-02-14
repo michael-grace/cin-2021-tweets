@@ -7,6 +7,7 @@ Author: Michael Grace <michael.grace@ury.org.uk>
 package web
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/dghubble/go-twitter/twitter"
@@ -30,6 +31,10 @@ type TweetSummary struct {
 	User      string `json:"user"`
 	Message   string `json:"tweet"`
 	TweetHTML string `json:"html"`
+}
+
+func (t TweetSummary) String() string {
+	return fmt.Sprintf("@%s: %s", t.User, t.Message)
 }
 
 var upgrader = websocket.Upgrader{

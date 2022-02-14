@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/michael-grace/cin-2021-tweets/pkg/logging"
 )
 
 type authHandler struct {
@@ -41,7 +42,7 @@ func (h wsAuthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		fmt.Println(err)
+		logging.Error(err)
 	}
 
 	fmt.Fprint(w, string(json))

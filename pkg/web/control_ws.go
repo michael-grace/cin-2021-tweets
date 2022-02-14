@@ -11,11 +11,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
 	"github.com/dghubble/go-twitter/twitter"
+	"github.com/michael-grace/cin-2021-tweets/pkg/logging"
 )
 
 type BlockStatus string
@@ -28,7 +28,7 @@ const (
 func (h *webEnv) sendJSONToControllers(data interface{}) {
 	for client := range h.controllerWebsocketClients {
 		if err := client.WriteJSON(data); err != nil {
-			fmt.Println(err)
+			logging.Error(err)
 		}
 	}
 }
@@ -57,7 +57,7 @@ func (h *webEnv) removeTweetFromConsideration(id string) {
 func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Printf("Failed to generate upgrader: %s", err)
+		logging.Error(err)
 		return
 	}
 
@@ -69,7 +69,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 		_, message, err := ws.ReadMessage()
 		if err != nil {
 			if !strings.Contains(err.Error(), "1001") {
-				log.Printf("Failed to read WebSocket message: %s", err)
+				logging.Error(err)
 			} else {
 				// Client Disconnected
 				return
@@ -82,7 +82,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 		}
 
 		if err = json.Unmarshal(message, &messageContent); err != nil {
-			fmt.Println(err.Error())
+			logging.Error(err)
 		}
 
 		if !wsAuthenticated && messageContent.Action != "AUTH" {
@@ -160,17 +160,30 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 				ID:     messageContent.Content,
 			})
 
+			var removedTweet TweetSummary
+			for tweet := range h.boardTweetsForQuerying {
+				if tweet.ID == messageContent.Content {
+					removedTweet = tweet
+				}
+			}
+
+			logging.LogAction(logging.RemoveFromBoard, removedTweet.String())
+
 		case "UNBLOCK":
 			delete(h.blockedUsers, messageContent.Content)
 			h.changeBlockStatus(UnblockUser, messageContent.Content)
+
+			logging.LogAction(logging.UnblockUser, messageContent.Content)
 
 		case "BLOCK":
 			user := h.tweetsForConsideration[messageContent.Content].User
 			h.blockedUsers[user] = true
 			h.changeBlockStatus(BlockUser, user)
+			logging.LogAction(logging.BlockUser, h.tweetsForConsideration[messageContent.Content].User)
 			h.removeTweetFromConsideration(messageContent.Content)
 
 		case "REJECT":
+			logging.LogAction(logging.RejectTweet, h.tweetsForConsideration[messageContent.Content].String())
 			h.removeTweetFromConsideration(messageContent.Content)
 
 		case "ACCEPT":
@@ -182,12 +195,12 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 					tweet.ID))
 
 			if err != nil {
-				fmt.Println(err.Error())
+				logging.Error(err)
 			}
 
 			j, err := io.ReadAll(embed.Body)
 			if err != nil {
-				fmt.Println(err.Error())
+				logging.Error(err)
 			}
 
 			var embedJson struct {
@@ -224,6 +237,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 				Tweet:  tweet,
 			})
 
+			logging.LogAction(logging.ApproveTweet, tweet.String())
 			h.removeTweetFromConsideration(messageContent.Content)
 
 		case "QUERY":
@@ -236,7 +250,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 					Action: "BLOCK",
 					User:   user,
 				}); err != nil {
-					fmt.Println(err.Error())
+					logging.Error(err)
 				}
 			}
 
@@ -249,7 +263,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 					Action: "RECENT",
 					Tweet:  tweet,
 				}); err != nil {
-					fmt.Println(err.Error())
+					logging.Error(err)
 				}
 			}
 
@@ -262,7 +276,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 					Action: "CONSIDER",
 					Tweet:  tweet,
 				}); err != nil {
-					fmt.Println(err.Error())
+					logging.Error(err)
 				}
 			}
 		}

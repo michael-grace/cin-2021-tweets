@@ -14,6 +14,7 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/michael-grace/cin-2021-tweets/pkg/logging"
 )
 
 func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
@@ -38,6 +39,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 
 		if err != nil {
 			w.WriteHeader(500)
+			logging.Error(err)
 			fmt.Fprint(w, err.Error())
 		}
 
