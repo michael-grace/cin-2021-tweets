@@ -12,6 +12,7 @@ let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
 
 let alert = document.getElementById("server");
 let authAlert = document.getElementById("authenticated")
+let started = false;
 
 const handleWs = () => {
 
@@ -49,9 +50,6 @@ const handleWs = () => {
 
     fetch("/info").then(d => d.json()).then(j => {
         document.getElementById("hashtag").innerHTML = j.hashtags.join(", ");
-        j.blockedUsers.forEach((user) => {
-            createBlockedUser(user)
-        })
     })
 
     ws.onopen = () => {
@@ -108,6 +106,14 @@ const handleWs = () => {
                     authAlert.innerText = "Authenticated";
                     authAlert.classList.remove("alert-info", "alert-danger");
                     authAlert.classList.add("alert-success");
+
+                    if (!started) {
+                        ws.send(JSON.stringify({
+                            "action": "QUERY"
+                        }))
+                        started = true
+                    }
+
                 } else {
                     authAlert.innerText = "Not Authenticated";
                     authAlert.classList.remove("alert-info", "alert-success");

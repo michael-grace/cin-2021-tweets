@@ -25,21 +25,15 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 		blockedUsers:               make(map[string]bool),
 		tweets:                     tweets,
 		recentlySentToBoard:        make(chan *TweetSummary, 8),
+		boardTweetsForQuerying:     make(map[TweetSummary]bool),
 		wsAuthToken:                uuid.New(),
 	}
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
-		var blockedUsers []string = make([]string, 0)
-		for user := range env.blockedUsers {
-			blockedUsers = append(blockedUsers, user)
-		}
-
-		jsonHashtags, err := json.Marshal(struct {
-			Hashtags     []string `json:"hashtags"`
-			BlockedUsers []string `json:"blockedUsers"`
+		jsonData, err := json.Marshal(struct {
+			Hashtags []string `json:"hashtags"`
 		}{
-			Hashtags:     hashtags,
-			BlockedUsers: blockedUsers,
+			Hashtags: hashtags,
 		})
 
 		if err != nil {
@@ -47,7 +41,7 @@ func StartWebServer(hashtags []string, tweets <-chan *twitter.Tweet) {
 			fmt.Fprint(w, err.Error())
 		}
 
-		fmt.Fprint(w, string(jsonHashtags))
+		fmt.Fprint(w, string(jsonData))
 	})
 
 	http.Handle("/ws-auth", authHandler{wsAuthHandler{

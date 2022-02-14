@@ -21,6 +21,7 @@ type webEnv struct {
 	blockedUsers               map[string]bool
 	tweets                     <-chan *twitter.Tweet
 	recentlySentToBoard        chan *TweetSummary
+	boardTweetsForQuerying     map[TweetSummary]bool
 	wsAuthToken                uuid.UUID
 }
 type TweetSummary struct {

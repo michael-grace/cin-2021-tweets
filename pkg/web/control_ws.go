@@ -203,6 +203,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			if len(h.recentlySentToBoard) == cap(h.recentlySentToBoard) {
 				// Tell controllers tweet no longer recent
 				oldTweet := <-h.recentlySentToBoard
+				delete(h.boardTweetsForQuerying, *oldTweet)
 				h.sendJSONToControllers(struct {
 					Action string `json:"action"`
 					ID     string `json:"id"`
@@ -214,6 +215,7 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 
 			// Tell controllers about new tweet
 			h.recentlySentToBoard <- &tweet
+			h.boardTweetsForQuerying[tweet] = true
 			h.sendJSONToControllers(struct {
 				Action string       `json:"action"`
 				Tweet  TweetSummary `json:"tweet"`
@@ -224,6 +226,45 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 
 			h.removeTweetFromConsideration(messageContent.Content)
 
+		case "QUERY":
+			// Blocked Users
+			for user := range h.blockedUsers {
+				if err := ws.WriteJSON(struct {
+					Action string `json:"action"`
+					User   string `json:"user"`
+				}{
+					Action: "BLOCK",
+					User:   user,
+				}); err != nil {
+					fmt.Println(err.Error())
+				}
+			}
+
+			// Recent Tweets
+			for tweet := range h.boardTweetsForQuerying {
+				if err := ws.WriteJSON(struct {
+					Action string       `json:"action"`
+					Tweet  TweetSummary `json:"tweet"`
+				}{
+					Action: "RECENT",
+					Tweet:  tweet,
+				}); err != nil {
+					fmt.Println(err.Error())
+				}
+			}
+
+			// Pending Tweets
+			for _, tweet := range h.tweetsForConsideration {
+				if err := ws.WriteJSON(struct {
+					Action string       `json:"action"`
+					Tweet  TweetSummary `json:"tweet"`
+				}{
+					Action: "CONSIDER",
+					Tweet:  tweet,
+				}); err != nil {
+					fmt.Println(err.Error())
+				}
+			}
 		}
 
 	}
