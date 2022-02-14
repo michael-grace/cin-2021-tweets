@@ -10,7 +10,7 @@ Required environment variables:
 -   `TWITTER_CONSUMER_SECRET`
 -   `TWITTER_OAUTH_TOKEN`
 -   `TWITTER_OAUTH_SECRET`
--   `HASHTAG` (this must include the `#` character, and can bue multiple hashtags, separated by `,`)
+-   `HASHTAG` (this must include the `#` character, and can be multiple hashtags, separated by `,`)
 -   `AUTH_USER` - username for the the controller login
 -   `AUTH_PASS` - password for the controller login
 
