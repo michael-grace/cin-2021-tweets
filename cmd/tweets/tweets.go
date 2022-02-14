@@ -7,6 +7,7 @@ Author: Michael Grace <michael.grace@ury.org.uk>
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -16,6 +17,22 @@ import (
 )
 
 func main() {
+
+	requiredEnvs := []string{
+		"HASHTAG",
+		"AUTH_USER",
+		"AUTH_PASS",
+		"TWITTER_CONSUMER_KEY",
+		"TWITTER_CONSUMER_SECRET",
+		"TWITTER_OAUTH_TOKEN",
+		"TWITTER_OAUTH_SECRET",
+	}
+
+	for _, env := range requiredEnvs {
+		if os.Getenv(env) == "" {
+			panic(fmt.Sprintf("%s not set", env))
+		}
+	}
 
 	var hashtags []string
 

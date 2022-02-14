@@ -74,8 +74,8 @@ const handleWs = () => {
         authAlert.classList.remove("alert-danger", "alert-success");
         authAlert.classList.add("alert-info");
 
-        console.log("disconnected...retrying in 1 sec")
-        setTimeout(() => { handleWs() }, 1000)
+        console.log("disconnected...retrying in 3 sec")
+        setTimeout(() => { handleWs() }, 3000)
     };
 
     ws.onmessage = (event) => {
