@@ -28,20 +28,20 @@ const handleWs = () => {
 
     const createBlockedUser = (user) => {
         let userCard = document.createElement("DIV");
-        userCard.classList.add("card");
+        userCard.classList.add("card", "m-2", "border-secondary");
         userCard.id = user
 
         let userCardBody = document.createElement("DIV")
         userCardBody.classList.add("card-body")
 
-        let userName = document.createElement("P")
+        let userName = document.createElement("LABEL")
         userName.innerText = user;
         userName.classList.add("card-text")
 
         userCardBody.appendChild(userName)
 
         let unblockButton = document.createElement("BUTTON");
-        unblockButton.classList.add("btn", "btn-warning", "btn-sm");
+        unblockButton.classList.add("btn", "btn-warning", "btn-sm", "ml-2");
         unblockButton.innerText = "Unblock";
 
         unblockButton.onclick = () => {
@@ -134,13 +134,13 @@ const handleWs = () => {
 
                 // Now lets put the tweet on the control screen
                 let tweet = document.createElement("DIV");
-                tweet.classList.add("card");
+                tweet.classList.add("card", "m-2", "border-secondary");
                 tweet.id = (message.action == "CONSIDER" ? "consider-" : "recent-") + message.tweet.id.toString()
 
                 let tweetCardBody = document.createElement("DIV");
                 tweetCardBody.classList.add("card-body");
 
-                let tweetTitle = document.createElement("H4");
+                let tweetTitle = document.createElement("B");
                 tweetTitle.innerText = message.tweet.name + " - @" + message.tweet.user;
                 tweetTitle.classList.add("card-title");
                 tweetCardBody.appendChild(tweetTitle);
