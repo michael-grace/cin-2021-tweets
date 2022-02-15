@@ -21,10 +21,15 @@ let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
 let alert = document.getElementById("server");
 let authAlert = document.getElementById("authenticated")
 let started = false;
+let ws;
+
+const sendToWs = (message) => {
+    ws.send(message)
+}
 
 const handleWs = () => {
 
-    let ws = new WebSocket(scheme + window.location.host + "/control-ws");
+    ws = new WebSocket(scheme + window.location.host + "/control-ws");
 
     const createBlockedUser = (user) => {
         let userCard = document.createElement("DIV");
@@ -45,7 +50,7 @@ const handleWs = () => {
         unblockButton.innerText = "Unblock";
 
         unblockButton.onclick = () => {
-            ws.send(JSON.stringify({
+            sendToWs(JSON.stringify({
                 "content": user,
                 "action": "UNBLOCK"
             }))
@@ -66,7 +71,7 @@ const handleWs = () => {
         alert.classList.add("alert-success");
 
         fetch("/ws-auth").then(d => d.json()).then(j => {
-            ws.send(JSON.stringify({
+            sendToWs(JSON.stringify({
                 "action": "AUTH",
                 "content": j.wsAuthToken
             }))
@@ -116,7 +121,7 @@ const handleWs = () => {
                     authAlert.classList.add("alert-success");
 
                     if (!started) {
-                        ws.send(JSON.stringify({
+                        sendToWs(JSON.stringify({
                             "action": "QUERY"
                         }))
                         started = true
@@ -156,7 +161,7 @@ const handleWs = () => {
                     acceptButton.innerText = "Accept Tweet";
 
                     acceptButton.onclick = () => {
-                        ws.send(JSON.stringify({
+                        sendToWs(JSON.stringify({
                             "content": message.tweet.id,
                             "action": "ACCEPT"
                         }));
@@ -169,7 +174,7 @@ const handleWs = () => {
                     rejectButton.innerText = "Reject Tweet";
 
                     rejectButton.onclick = () => {
-                        ws.send(JSON.stringify({
+                        sendToWs(JSON.stringify({
                             "content": message.tweet.id,
                             "action": "REJECT"
                         }));
@@ -183,7 +188,7 @@ const handleWs = () => {
 
                     blockButton.onclick = () => {
                         if (confirm("Are you sure you want to block @" + message.tweet.user + "?")) {
-                            ws.send(JSON.stringify({
+                            sendToWs(JSON.stringify({
                                 "content": message.tweet.id,
                                 "action": "BLOCK"
                             }));
@@ -199,7 +204,7 @@ const handleWs = () => {
 
                     removeButton.onclick = () => {
                         if (confirm("Are you sure you want to remove this tweet from the wall?")) {
-                            ws.send(JSON.stringify({
+                            sendToWs(JSON.stringify({
                                 "action": "BOARD_REMOVE",
                                 "content": message.tweet.id
                             }))
@@ -217,13 +222,13 @@ const handleWs = () => {
 
 
     document.getElementById("clear").onclick = () => {
-        ws.send(JSON.stringify({
+        sendToWs(JSON.stringify({
             "action": "CLEAR_CONTROL"
         }))
     }
 
     document.getElementById("clear-board").onclick = () => {
-        ws.send(JSON.stringify({
+        sendToWs(JSON.stringify({
             "action": "CLEAR_BOARD"
         }))
     }
