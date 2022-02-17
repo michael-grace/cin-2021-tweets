@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 console.log("Connecting...")
 
 let scheme = window.location.protocol === "https:" ? "wss://" : "ws://"
+let started = false;
 
 const handleWs = () => {
 
@@ -29,6 +30,10 @@ const handleWs = () => {
     ws.onopen = () => {
         console.log("Connected.");
         document.getElementById("warning").hidden = true;
+        if (!started) {
+            ws.send("QUERY")
+            started = true
+        }
     }
 
     ws.onmessage = (event) => {

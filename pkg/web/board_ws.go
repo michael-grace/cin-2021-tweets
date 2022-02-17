@@ -20,6 +20,7 @@ package web
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/michael-grace/cin-2021-tweets/pkg/logging"
 )
@@ -38,7 +39,33 @@ func (h *webEnv) boardWebsocketHandler(w http.ResponseWriter, r *http.Request) {
 		ws.Close()
 	}()
 
-	ws.ReadMessage()
+	for {
+		_, message, err := ws.ReadMessage()
+
+		if err != nil {
+			if !strings.Contains(err.Error(), "1001") {
+				logging.Error(err)
+			} else {
+				// Client Disconnected
+				return
+			}
+		}
+
+		if string(message) == "QUERY" {
+			for tweet := range h.boardTweetsForQuerying {
+				if err := ws.WriteJSON(struct {
+					Action string       `json:"action"`
+					Tweet  TweetSummary `json:"tweet"`
+				}{
+					Action: "ADD",
+					Tweet:  tweet,
+				}); err != nil {
+					logging.Error(err)
+				}
+			}
+		}
+
+	}
 
 }
 

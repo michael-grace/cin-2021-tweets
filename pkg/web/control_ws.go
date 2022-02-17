@@ -176,8 +176,10 @@ func (h *webEnv) controllerWebsocketHandler(w http.ResponseWriter, r *http.Reque
 			for tweet := range h.boardTweetsForQuerying {
 				if tweet.ID == messageContent.Content {
 					removedTweet = tweet
+					break
 				}
 			}
+			delete(h.boardTweetsForQuerying, removedTweet)
 
 			logging.LogAction(logging.RemoveFromBoard, removedTweet.String())
 
